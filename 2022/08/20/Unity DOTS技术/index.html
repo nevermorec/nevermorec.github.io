@@ -1,0 +1,177 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> Unity DOTS技术 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Unity DOTS技术 - John Doe"><meta name="keywords"><meta name="author" content="John Doe"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://nevermorec.gitee.io/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">Unity DOTS技术</h1><div class="post-info">2022-08-20<p class="visit"><i data-identity="2022/08/20/Unity DOTS技术/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><h2 id="DOTS"><a href="#DOTS" class="headerlink" title="DOTS"></a>DOTS</h2><ul>
+<li>Job System</li>
+<li>Burst编译器，native code</li>
+<li>ECS</li>
+</ul>
+<h2 id="JobSystem"><a href="#JobSystem" class="headerlink" title="JobSystem"></a>JobSystem</h2><p><a target="_blank" rel="noopener" href="https://docs.unity3d.com/cn/current/Manual/JobSystemNativeContainer.html">NativeContainer - Unity 手册 (unity3d.com)</a></p>
+<p>Job System是Unity的多线程高性能的Worker框架，是Unity的底层技术之一。</p>
+<p>传统多线程的可能问题：</p>
+<ul>
+<li>死锁</li>
+<li>资源竞争</li>
+</ul>
+<p>Job System能够更安全的写多线程代码</p>
+<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><ul>
+<li>创建worker线程（非必要，主线程也能是worker线程）</li>
+<li>将数据复制到worker</li>
+<li>worker线程完成计算</li>
+<li>结果同步</li>
+</ul>
+<p>原始数据自动锁定，由编译器保证其无法被占用，如果访问相同变量，会报错。</p>
+<h3 id="数据复制、数据安全"><a href="#数据复制、数据安全" class="headerlink" title="数据复制、数据安全"></a>数据复制、数据安全</h3><p>Job System会检测所有的竞争条件，确保同一时间所有的job不存在竞争条件。 C# 作业系统通过向每个作业发送它需要操作的数据的副本来解决这个问题，而不是对控制线程中的数据的引用。 此副本隔离了数据，从而消除了竞争条件。</p>
+<p>Job System的数据存放在非托管内存中，Job System只能访问<strong>blittable</strong>类型的数据，在托管代码和native code之间这些数据无需转换。作业调度时，使用<strong>memcpy</strong>将数据复制到非托管内存中。</p>
+<p>在作业中分配托管内存非常慢，而且作业无法使用 Unity <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=NF6kcNS6U80&t=2s">Burst 编译器</a>来提高性能。Burst 是一种新的基于 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/LLVM">LLVM</a> 的后端编译器技术，可以简化您的工作。此编译器获取 C# 作业并生成高度优化的机器代码，从而利用目标平台的特定功能。</p>
+<p><a target="_blank" rel="noopener" href="https://docs.unity3d.com/cn/current/Manual/JobSystemSafetySystem.html">安全系统</a>复制数据的过程的缺点是会将作业的结果隔离到每个副本中。为了克服此限制，需要将结果存储在一种名为 <a target="_blank" rel="noopener" href="https://docs.unity3d.com/cn/current/ScriptReference/Unity.Collections.LowLevel.Unsafe.NativeContainerAttribute.html">NativeContainer</a> 的共享内存中。</p>
+<h3 id="作业依赖"><a href="#作业依赖" class="headerlink" title="作业依赖"></a>作业依赖</h3><p>如果一个job依赖另一个job，需要通过代码建立他们的依赖</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">JobHandle firstJobHandle = firstJob.Schedule();</span><br><span class="line">secondJob.Schedule(firstJobHandle);</span><br></pre></td></tr></table></figure>
+
+<p>如果一个作业具有许多依赖项，则可以使用 <a target="_blank" rel="noopener" href="https://docs.unity3d.com/cn/current/ScriptReference/Unity.Jobs.JobHandle.CombineDependencies.html">JobHandle.CombineDependencies</a> 方法合并这些依赖项。<code>CombineDependencies</code> 可以将依赖项传递给 <code>Schedule</code> 方法</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">NativeArray&lt;JobHandle&gt; handles = new NativeArray&lt;JobHandle&gt;(numJobs, Allocator.TempJob);</span><br><span class="line"></span><br><span class="line">// 使用来自多个调度作业的 `JobHandles` 填充 `handles`...</span><br><span class="line"></span><br><span class="line">JobHandle jh = JobHandle.CombineDependencies(handles);</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="例子：Sum"><a href="#例子：Sum" class="headerlink" title="例子：Sum"></a>例子：Sum</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line">public struct ParallelSumJob : IJobFor</span><br><span class="line">&#123;</span><br><span class="line">    [ReadOnly]</span><br><span class="line">    public NativeArray&lt;float&gt; a;</span><br><span class="line">    [ReadOnly]</span><br><span class="line">    public NativeArray&lt;float&gt; b;</span><br><span class="line">    public NativeArray&lt;float&gt; result;</span><br><span class="line"></span><br><span class="line">    public void Execute(int i)</span><br><span class="line">    &#123;</span><br><span class="line">        result[i] = a[i] + b[i];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class JobSample : MonoBehaviour</span><br><span class="line">&#123;</span><br><span class="line">    public static int len = 100000;</span><br><span class="line">    </span><br><span class="line">    NativeArray&lt;float&gt; a;</span><br><span class="line">    NativeArray&lt;float&gt; b;</span><br><span class="line">    NativeArray&lt;float&gt; result;</span><br><span class="line"></span><br><span class="line">    private void Job()</span><br><span class="line">    &#123;</span><br><span class="line">        DateTime beginTime = DateTime.Now;</span><br><span class="line">        a = new NativeArray&lt;float&gt;(len, Allocator.TempJob);</span><br><span class="line">        b = new NativeArray&lt;float&gt;(len, Allocator.TempJob);</span><br><span class="line">        result = new NativeArray&lt;float&gt;(len, Allocator.TempJob);</span><br><span class="line">            </span><br><span class="line">        for (int i = 0; i &lt; len; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            a[i] = 1;</span><br><span class="line">            b[i] = 2;</span><br><span class="line">        &#125;</span><br><span class="line">            </span><br><span class="line">        ParallelSumJob jobData = new ParallelSumJob();</span><br><span class="line">        jobData.a = a;  </span><br><span class="line">        jobData.b = b;</span><br><span class="line">        jobData.result = result;</span><br><span class="line">            </span><br><span class="line">        var handle = jobData.ScheduleParallel(len, 32, new JobHandle());</span><br><span class="line">        handle.Complete();</span><br><span class="line">            </span><br><span class="line">        Debug.Log(jobData.result[0]);</span><br><span class="line">        </span><br><span class="line">        // Native arrays must be disposed manually.</span><br><span class="line">        a.Dispose();</span><br><span class="line">        b.Dispose();</span><br><span class="line">        result.Dispose();</span><br><span class="line">            </span><br><span class="line">        DateTime endTime = DateTime.Now;              //获取结束时间  </span><br><span class="line">        TimeSpan oTime = endTime.Subtract(beginTime); </span><br><span class="line">        Debug.Log($&quot;程序的运行时间：&#123;oTime.TotalMilliseconds&#125; 毫秒&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="例子：JobSystem-实现鱼群"><a href="#例子：JobSystem-实现鱼群" class="headerlink" title="例子：JobSystem 实现鱼群"></a>例子：JobSystem 实现鱼群</h3><p><img src="C:\Users\huangyuancheng\AppData\Roaming\Typora\typora-user-images\image-20221112170724424.png" alt="image-20221112170724424"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br></pre></td><td class="code"><pre><span class="line">public class FishGenerator : MonoBehaviour</span><br><span class="line">&#123;</span><br><span class="line">    [BurstCompile]</span><br><span class="line">    private struct FishPositionUpdateJob: IJobParallelForTransform</span><br><span class="line">    &#123;</span><br><span class="line">        public NativeArray&lt;float3&gt; objectVelocities;</span><br><span class="line">        </span><br><span class="line">        public float swimSpeed;</span><br><span class="line"></span><br><span class="line">        public float deltaTime;</span><br><span class="line"></span><br><span class="line">        public float turnSpeed;</span><br><span class="line">        </span><br><span class="line">        public int swimChangeFrequency;</span><br><span class="line"></span><br><span class="line">        public float3 center;</span><br><span class="line"></span><br><span class="line">        public float3 bounds;</span><br><span class="line">        </span><br><span class="line">        [NativeDisableContainerSafetyRestriction]</span><br><span class="line">        public NativeArray&lt;Unity.Mathematics.Random&gt; randomArray;</span><br><span class="line">        </span><br><span class="line">        [NativeSetThreadIndex]</span><br><span class="line">        private int _threadId;</span><br><span class="line"></span><br><span class="line">        public void Execute(int index, TransformAccess transform)</span><br><span class="line">        &#123;</span><br><span class="line">            Unity.Mathematics.Random random = randomArray[_threadId];</span><br><span class="line">            transform.position += transform.localToWorldMatrix.MultiplyVector(new Vector3(0, 0, 1)) *</span><br><span class="line">                                  swimSpeed * deltaTime * random.NextFloat(0.3f, 1.0f);</span><br><span class="line">            </span><br><span class="line"></span><br><span class="line">            var curVelocity = objectVelocities[index];</span><br><span class="line">            if (!curVelocity.Equals(float3.zero))</span><br><span class="line">            &#123;</span><br><span class="line">                transform.rotation = Quaternion.Lerp(transform.rotation, </span><br><span class="line">                    Quaternion.LookRotation(curVelocity), turnSpeed * deltaTime);</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            // prevent a fish-out-of-bound</span><br><span class="line">            var curPosition = transform.position;</span><br><span class="line">            bool randomise = true;</span><br><span class="line">            </span><br><span class="line">            if (curPosition.x &gt; center.x + bounds.x || </span><br><span class="line">                curPosition.x &lt; center.x - bounds.x || </span><br><span class="line">                curPosition.z &gt; center.z + bounds.z || </span><br><span class="line">                curPosition.z &lt; center.z - bounds.z)</span><br><span class="line">            &#123;</span><br><span class="line">                Vector3 internalPosition = new Vector3(center.x + random.NextFloat(-bounds.x, bounds.x)/1.3f, </span><br><span class="line">                    0, center.z + random.NextFloat(-bounds.z, bounds.z)/1.3f);</span><br><span class="line">                curVelocity = (internalPosition- curPosition).normalized;</span><br><span class="line">                objectVelocities[index] = curVelocity;</span><br><span class="line">                transform.rotation = Quaternion.Lerp(transform.rotation, </span><br><span class="line">                    Quaternion.LookRotation(curVelocity), </span><br><span class="line">                    turnSpeed * deltaTime * 2);</span><br><span class="line">                randomise = false;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            if (randomise)</span><br><span class="line">            &#123;</span><br><span class="line">                if (random.NextInt(0, swimChangeFrequency) &lt;= 2)</span><br><span class="line">                &#123;</span><br><span class="line">                    objectVelocities[index] = new Vector3(random.NextFloat(-1f, 1f),</span><br><span class="line">                        0, random.NextFloat(-1f, 1f));</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            randomArray[_threadId] = random;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private FishPositionUpdateJob _fishPositionUpdateJob;</span><br><span class="line"></span><br><span class="line">    private NativeArray&lt;float3&gt; _objectVelocities;</span><br><span class="line"></span><br><span class="line">    private NativeArray&lt;Unity.Mathematics.Random&gt; _randoms;</span><br><span class="line">    </span><br><span class="line">    private NativeArray&lt;float3&gt; _velocities;</span><br><span class="line"></span><br><span class="line">    private TransformAccessArray _transformAccessArray;</span><br><span class="line"></span><br><span class="line">    public GameObject FishTemplate;</span><br><span class="line">    </span><br><span class="line">    public int fishCount;</span><br><span class="line">    </span><br><span class="line">    public BoxCollider spawnBounds;</span><br><span class="line">    </span><br><span class="line">    public float spawnHeight;</span><br><span class="line">    </span><br><span class="line">    public int swimChangeFrequency;</span><br><span class="line">    </span><br><span class="line">    // Start is called before the first frame update</span><br><span class="line">    void Start()</span><br><span class="line">    &#123;</span><br><span class="line">        _velocities = new NativeArray&lt;float3&gt;(fishCount, Allocator.Persistent);</span><br><span class="line">        _transformAccessArray = new TransformAccessArray(fishCount);</span><br><span class="line">        _objectVelocities = new NativeArray&lt;float3&gt;(fishCount, Allocator.Persistent);</span><br><span class="line"></span><br><span class="line">        for (int i = 0; i &lt; fishCount; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            float distanceX = UnityEngine.Random.Range(-spawnBounds.bounds.extents.x, spawnBounds.bounds.extents.x);</span><br><span class="line">            float distanceZ = UnityEngine.Random.Range(-spawnBounds.bounds.extents.z, spawnBounds.bounds.extents.z);</span><br><span class="line"></span><br><span class="line">            Vector3 spawnPoint = spawnBounds.bounds.center + Vector3.up * spawnHeight + new Vector3(distanceX, 0, distanceZ);</span><br><span class="line"></span><br><span class="line">            // generare fish obj</span><br><span class="line">            var go = GameObject.Instantiate(FishTemplate, spawnPoint, Quaternion.identity);</span><br><span class="line">            _transformAccessArray.Add(go.transform);</span><br><span class="line">            </span><br><span class="line">            // _objectVelocities[i] = new float3(1, 1, 1);</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        // 生成线程数量的随机种子</span><br><span class="line">        _randoms = new NativeArray&lt;Unity.Mathematics.Random&gt;(JobsUtility.MaxJobThreadCount, Allocator.TempJob);</span><br><span class="line">        for (int i = 0; i &lt; _randoms.Length; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            _randoms[i] = Unity.Mathematics.Random.CreateFromIndex((uint) i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        _fishPositionUpdateJob = new FishPositionUpdateJob()</span><br><span class="line">        &#123;</span><br><span class="line">            randomArray = _randoms,</span><br><span class="line">            swimSpeed = 0.2f,</span><br><span class="line">            objectVelocities = _objectVelocities,</span><br><span class="line">            turnSpeed = 4.6f,</span><br><span class="line">            swimChangeFrequency = swimChangeFrequency,</span><br><span class="line">            center = spawnBounds.bounds.center,</span><br><span class="line">            bounds = spawnBounds.bounds.extents,</span><br><span class="line">        &#125;;</span><br><span class="line">        </span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // Update is called once per frame</span><br><span class="line">    void Update()</span><br><span class="line">    &#123;</span><br><span class="line">        _fishPositionUpdateJob.deltaTime = Time.deltaTime;</span><br><span class="line">        var jobHandle = _fishPositionUpdateJob.Schedule(_transformAccessArray, default);</span><br><span class="line">        jobHandle.Complete();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void OnDestroy()</span><br><span class="line">    &#123;</span><br><span class="line">        _velocities.Dispose();</span><br><span class="line">        _transformAccessArray.Dispose();</span><br><span class="line">        _randoms.Dispose();</span><br><span class="line">        _objectVelocities.Dispose();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="细节"><a href="#细节" class="headerlink" title="细节"></a>细节</h3><p>（1）unity中 GetComponment<T>() 只比 GetComponment(typeof(T)) 高效一点点，但却比 GetComponment(string) 高效接近一百倍。所以，<strong>应该确保不要使用 GetComponment(string) 方法</strong>。除了一些罕见的情况，比如需要使用它来解析用户输入的字符串，从而获取一个组件。这种情况一般只会发生在自定义的调试控制器上，而对于产品级的应用，GetComponment(string) 是一种不必要的浪费。</p>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2022/10/20/Unity%E7%9B%B8%E6%9C%BA%E6%8B%8D%E7%85%A7%E5%92%8C%E6%B0%B4%E5%8D%B0/" title="Unity相机拍照和水印" class="prev">PREV</a><a href="/2022/04/24/Windows%E6%90%AD%E5%BB%BAGames101%E7%8E%AF%E5%A2%83/" title="Windows搭建Games101环境" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2023 <a target="_blank">John Doe</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

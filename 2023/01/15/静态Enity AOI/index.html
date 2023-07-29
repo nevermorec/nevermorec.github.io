@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 静态Enity AOI管理 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="静态Enity AOI管理 - John Doe"><meta name="keywords"><meta name="author" content="John Doe"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://nevermorec.gitee.io/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">静态Enity AOI管理</h1><div class="post-info">2023-01-15<p class="visit"><i data-identity="2023/01/15/静态Enity AOI/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>这里说的静态Entity指的是位置确定的物体，可以在玩家靠近时加载生成，玩家离开时销毁Entity。<br>为了把性能消耗降到最低，同时不影响玩家的游戏体验，就只会向玩家生成并感兴趣的区域的静态Entity，也就是AOI进行广播。<br>下面介绍的网格法AOI，以一个100*100的地图为例，每10米划分一个网格，就能将整个地图映射到x<del>(0, 1,…,10)和y</del>(0, 1,…,10)的坐标上，游戏运行时仅需要向玩家生成这个坐标附近的网格Entity（AOI范围内）即可，对于玩家AOI范围外的Entity进行销毁。示意图如下，黄色部分是AOI范围内<br><img src="https://github.com/nevermorec/Photo-store/blob/master/AI/13.png?raw=true" alt="image"></p>
+<h2 id="AOI-Entity"><a href="#AOI-Entity" class="headerlink" title="AOI Entity"></a>AOI Entity</h2><p>AOI Entity 是所以静态Enity类的抽象类</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public abstract class AOIEntity</span><br><span class="line">&#123;</span><br><span class="line">    public string key;</span><br><span class="line"></span><br><span class="line">    public bool visiable = false;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="StaticAOIManager"><a href="#StaticAOIManager" class="headerlink" title="StaticAOIManager"></a>StaticAOIManager</h2><p>StaticAOIManager是静态Entity的单例类，下面介绍其中的关键方法，和属性。</p>
+<h3 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">private Dictionary&lt;string, Action&lt;AOIEntity&gt;&gt; _onSpawnDict = new Dictionary&lt;string,Action&lt;AOIEntity&gt;&gt;();</span><br><span class="line"></span><br><span class="line">private Dictionary&lt;string, Action&lt;AOIEntity&gt;&gt; _onDestroyDict = new Dictionary&lt;string,Action&lt;AOIEntity&gt;&gt;();</span><br><span class="line"></span><br><span class="line">private Dictionary&lt;int, List&lt;AOIEntity&gt;&gt; _indexToEnityDict = new Dictionary&lt;int,List&lt;AOIEntity&gt;&gt;();</span><br><span class="line"></span><br><span class="line">private List&lt;AOIEntity&gt; _curVisiableEntity = new List&lt;AOIEntity&gt;();</span><br><span class="line"></span><br><span class="line">public float gridSize = 10;</span><br><span class="line"></span><br><span class="line">public int AOIRange = 3;</span><br><span class="line"></span><br><span class="line">public GameObject player;</span><br><span class="line"></span><br><span class="line">private int _lastIndex = -1;</span><br></pre></td></tr></table></figure>
+<p>StaticAOIManager使用Key（string）作为不同类型Entity的标识</p>
+<ul>
+<li>_onSpawnDict和_onDestroyDict 是生成和销毁的回调函数</li>
+<li>_indexToEnityDict 是坐标唯一index对应的所有entity的Dict</li>
+<li>_curVisiableEntity 是当前可见的entity，即在AOI范围内的entity</li>
+<li>gridSize 网格切分大小</li>
+<li>AOIRange AOI范围</li>
+<li>_lastIndex 记录上一帧的玩家坐标Index，如果不变不需要进行AOI更新</li>
+</ul>
+<h3 id="世界坐标映射到网格坐标"><a href="#世界坐标映射到网格坐标" class="headerlink" title="世界坐标映射到网格坐标"></a>世界坐标映射到网格坐标</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">private Vector3Int GetGridPos(Vector3 position)</span><br><span class="line">&#123;</span><br><span class="line">    return new Vector3Int(Convert.ToInt32(position.x / gridSize), Convert.ToInt32(position.y / gridSize),</span><br><span class="line">        Convert.ToInt32(position.z / gridSize));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="网格坐标转成唯一ID"><a href="#网格坐标转成唯一ID" class="headerlink" title="网格坐标转成唯一ID"></a>网格坐标转成唯一ID</h3><p>可以直接用网格坐标作为唯一ID，此处为了性能将网格坐标映射到一个int</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">private int GetGridIndexByGridPos(Vector3Int gridPos)</span><br><span class="line">&#123;</span><br><span class="line">    int res = 0;</span><br><span class="line">    if (gridPos.x &lt; 0) res = res | (1 &lt;&lt; 11);</span><br><span class="line">    res |= Mathf.Abs(gridPos.x);</span><br><span class="line">    if (gridPos.y &lt; 0) res = res | (1 &lt;&lt; 21);</span><br><span class="line">    res |= Mathf.Abs(gridPos.y);</span><br><span class="line">    if (gridPos.z &lt; 0) res = res | (1 &lt;&lt; 31);</span><br><span class="line">    res |= Mathf.Abs(gridPos.z);</span><br><span class="line">    return res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="注册生成和销毁回调函数"><a href="#注册生成和销毁回调函数" class="headerlink" title="注册生成和销毁回调函数"></a>注册生成和销毁回调函数</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">// 注册生成函数</span><br><span class="line">public void Regiseter(string key, Action&lt;AOIEntity&gt; onSpawnCallback, Action&lt;AOIEntity&gt; onDestroyCallback)</span><br><span class="line">&#123;</span><br><span class="line">    if (onSpawnCallback!= null)</span><br><span class="line">        _onSpawnDict[key] = onSpawnCallback;</span><br><span class="line">    if (onDestroyCallback != null)</span><br><span class="line">        _onDestroyDict[key] = onDestroyCallback;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="增加一个Entity的生成点"><a href="#增加一个Entity的生成点" class="headerlink" title="增加一个Entity的生成点"></a>增加一个Entity的生成点</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// 增加生成点</span><br><span class="line">public void AddSpawnPoint(string key, Vector3 pos, AOIEntity entity)</span><br><span class="line">&#123;</span><br><span class="line">    var index = GetGridIndexByGridPos(GetGridPos(pos));</span><br><span class="line">    if (!_indexToEnityDict.ContainsKey(index))</span><br><span class="line">    &#123;</span><br><span class="line">        _indexToEnityDict.Add(index, new List&lt;AOIEntity&gt;());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    var entityList = _indexToEnityDict[index];</span><br><span class="line">    entityList.Add(entity);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>pos表示该entity的生成位置，如果这个pos在AOI范围内会出发生成entity</p>
+<h3 id="AOI更新函数"><a href="#AOI更新函数" class="headerlink" title="AOI更新函数"></a>AOI更新函数</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">private void Update()</span><br><span class="line">&#123;</span><br><span class="line">    if (_indexToEnityDict.Count == 0 || player == null) return;</span><br><span class="line"></span><br><span class="line">    var gridPos = GetGridPos(player.transform.position);</span><br><span class="line">    var playerIndex = GetGridIndexByGridPos(gridPos);</span><br><span class="line">    if (playerIndex == _lastIndex) return;</span><br><span class="line"></span><br><span class="line">    _lastIndex = playerIndex;</span><br><span class="line">    List&lt;AOIEntity&gt; enterEntityList = new List&lt;AOIEntity&gt;();</span><br><span class="line">    List&lt;AOIEntity&gt; leaveEntityList = new List&lt;AOIEntity&gt;();</span><br><span class="line">    List&lt;AOIEntity&gt; newVisiableEntityList = new List&lt;AOIEntity&gt;();</span><br><span class="line">    for (int i = -AOIRange; i &lt; AOIRange; i++)</span><br><span class="line">    &#123;</span><br><span class="line">        for (int j = -AOIRange; j &lt; AOIRange; j++)</span><br><span class="line">        &#123;</span><br><span class="line">            for (int k = -AOIRange; k &lt; AOIRange; k++)</span><br><span class="line">            &#123;</span><br><span class="line">                var index = GetGridIndexByGridPos(new Vector3Int(gridPos.x + i, gridPos.y + j, gridPos.z + k));</span><br><span class="line">                _indexToEnityDict.TryGetValue(index, out var entityList);</span><br><span class="line">                if (entityList != null)</span><br><span class="line">                &#123;</span><br><span class="line">                    newVisiableEntityList.AddRange(entityList);</span><br><span class="line">                    foreach (var entity in entityList)</span><br><span class="line">                    &#123;</span><br><span class="line">                        if (!_curVisiableEntity.Contains(entity))</span><br><span class="line">                        &#123;</span><br><span class="line">                            enterEntityList.Add(entity);</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    foreach (var entity in _curVisiableEntity)</span><br><span class="line">    &#123;</span><br><span class="line">        if (!newVisiableEntityList.Contains(entity))</span><br><span class="line">        &#123;</span><br><span class="line">            leaveEntityList.Add(entity);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    _curVisiableEntity = newVisiableEntityList;</span><br><span class="line">    foreach (var entity in enterEntityList)</span><br><span class="line">    &#123;</span><br><span class="line">        _onSpawnDict.TryGetValue(entity.key, out var onSpawnCallback);</span><br><span class="line">        if (onSpawnCallback != null)</span><br><span class="line">        &#123;</span><br><span class="line">            onSpawnCallback.Invoke(entity);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    foreach (var entity in leaveEntityList)</span><br><span class="line">    &#123;</span><br><span class="line">        _onDestroyDict.TryGetValue(entity.key, out var onDestroyCallback);</span><br><span class="line">        if (onDestroyCallback != null)</span><br><span class="line">        &#123;</span><br><span class="line">            onDestroyCallback.Invoke(entity);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>运行逻辑大体是，如果玩家位置对应的网格坐标发生了变化，需要进行AOI的Entity更新<br>AOI的Entity更新步骤如下：</p>
+<ul>
+<li>获取新AOI范围内的所有entity</li>
+<li>计算新进入的entity，调用onSpawn回调</li>
+<li>计算离开的entity，调用onDestroy回调</li>
+<li>更新当前的AOI范围内的entity数组</li>
+</ul>
+<h2 id="使用方法"><a href="#使用方法" class="headerlink" title="使用方法"></a>使用方法</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">public class CubeEntity : AOIEntity</span><br><span class="line">&#123;</span><br><span class="line">    public GameObject cube;</span><br><span class="line">    public Vector3 position;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class CubeSpawn: MonoBehaviour</span><br><span class="line">&#123;</span><br><span class="line">    public GameObject prefab;</span><br><span class="line">    </span><br><span class="line">    private void Awake()</span><br><span class="line">    &#123;</span><br><span class="line">        StaticAOIManager.Instance.Regiseter(&quot;cube&quot;, OnSpawnCallback, OnDestroyCallback);</span><br><span class="line"></span><br><span class="line">        CubeEntity cubeEntity1 = new CubeEntity();</span><br><span class="line">        cubeEntity1.key = &quot;cube&quot;;</span><br><span class="line">        cubeEntity1.position = new Vector3(0, 0, 0);</span><br><span class="line">        CubeEntity cubeEntity2 = new CubeEntity();</span><br><span class="line">        cubeEntity2.key = &quot;cube&quot;;</span><br><span class="line">        cubeEntity2.position = new Vector3(40, 0, 0);</span><br><span class="line">        </span><br><span class="line">        StaticAOIManager.Instance.AddSpawnPoint(&quot;cube&quot;, cubeEntity1.position, cubeEntity1);</span><br><span class="line">        StaticAOIManager.Instance.AddSpawnPoint(&quot;cube&quot;, cubeEntity2.position, cubeEntity2);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private void OnSpawnCallback(AOIEntity obj)</span><br><span class="line">    &#123;</span><br><span class="line">        var cubeEntity = obj as CubeEntity;</span><br><span class="line">        cubeEntity.cube = Instantiate(prefab);</span><br><span class="line">        cubeEntity.cube.SetActive(true);</span><br><span class="line">        cubeEntity.cube.transform.position = cubeEntity.position;</span><br><span class="line">        Debug.Log(&quot;spawn cube&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    private void OnDestroyCallback(AOIEntity obj)</span><br><span class="line">    &#123;</span><br><span class="line">        var cubeEntity = obj as CubeEntity;</span><br><span class="line">        Destroy(cubeEntity.cube);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="后续优化空间"><a href="#后续优化空间" class="headerlink" title="后续优化空间"></a>后续优化空间</h2><ul>
+<li>这种AOI范围是比较简单粗暴的，如果玩家在网格边界反复横条，会导致entity频繁生成和销毁，对此可以（1）离开后设置entity延迟销毁时间，如果在延迟时间内entity重新进入AOI，则该entity不需要销毁（2）设置一个比AOI范围更大的离开范围，只有entity在离开范围外才触发entity销毁</li>
+</ul>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2022/10/20/Unity%E7%9B%B8%E6%9C%BA%E6%8B%8D%E7%85%A7%E5%92%8C%E6%B0%B4%E5%8D%B0/" title="Unity相机拍照和水印" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2023 <a target="_blank">John Doe</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

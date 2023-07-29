@@ -1,0 +1,268 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> UE-GAS(技能系统) · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="UE-GAS(技能系统) - John Doe"><meta name="keywords"><meta name="author" content="John Doe"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://nevermorec.gitee.io/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">UE-GAS(技能系统)</h1><div class="post-info">2022-03-20<p class="visit"><i data-identity="2022/03/20/UE-GAS(技能系统)/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>英文文档：<a target="_blank" rel="noopener" href="https://github.com/tranek/GASDocumentation#concepts-ge-definition">https://github.com/tranek/GASDocumentation#concepts-ge-definition</a></p>
+<p>中文文档：<a target="_blank" rel="noopener" href="https://github.com/BillEliot/GASDocumentation_Chinese#45-gameplay-effects">https://github.com/BillEliot/GASDocumentation_Chinese#45-gameplay-effects</a></p>
+<p>GA（GameAblity）</p>
+<p>GE（GameEffect）</p>
+<p>技能冷却机制实现：</p>
+<ul>
+<li>创建GE，持续事件设置为Has Duration，时间设置为CD，增加Tag、</li>
+<li>技能GA的class default中的cooldown Game Effect设置为上面的GE</li>
+<li>GA中的event activateAbility中增加CommitAbility</li>
+</ul>
+<p>GAS执行流程：</p>
+<ul>
+<li><p>通过角色的AbilitySystemCompont执行trytoactivateability(FGameplayAbility Ability)可以执行指定GA</p>
+</li>
+<li><p>GA：激活GA后运行Event Activate Ability事件，CommitAbility用于提交扣蓝等功能。</p>
+</li>
+</ul>
+<p><img src="https://gitee.com/nevermorec/photo-store/raw/master/GAS/1.png" alt="image-20220115174818619"></p>
+<ul>
+<li><p>如果是攻击技能开启碰撞检测。将HitResult或者HItActor放入TargetDataHandle中</p>
+<p>c++放入过程：</p>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">FGameplayAbilityTargetDataHandle TargetDataHandle;</span><br><span class="line"></span><br><span class="line">FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(HitResult);</span><br><span class="line">TargetDataHandle.Add(TargetData);</span><br></pre></td></tr></table></figure>
+
+<p>蓝图只能单个Actor或者HitResult放入TargetDataHandle中</p>
+<p><img src="https://gitee.com/nevermorec/photo-store/raw/master/GAS/2.png"></p>
+<ul>
+<li><p>对被释放对象施加GE</p>
+<p>蓝图调用ApplyGamePlayEffectToTarget</p>
+<p>C++ 例子如下 TargetEffectSpecs是EffectSpecHandle的数组，ContainerSpec.TargetDataHandle包含要施加GE的actor</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">TArray&lt;FActiveGameplayEffectHandle&gt; UBaseGameplayAbility::ApplyEffectContainerSpec(</span><br><span class="line">   FGamePlayEffectContainerSpec&amp; ContainerSpec)</span><br><span class="line">&#123;</span><br><span class="line">   TArray&lt;FActiveGameplayEffectHandle&gt; AllEffects;</span><br><span class="line">   for (auto TargetEffectSpec : ContainerSpec.TargetEffectSpecs)</span><br><span class="line">   &#123;</span><br><span class="line">      AllEffects.Append(K2_ApplyGameplayEffectSpecToTarget(TargetEffectSpec, ContainerSpec.TargetDataHandle));</span><br><span class="line">   &#125;</span><br><span class="line">   return AllEffects;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="GamePlayAbility-GA"><a href="#GamePlayAbility-GA" class="headerlink" title="GamePlayAbility (GA)"></a>GamePlayAbility (GA)</h2><h3 id="输入键位绑定"><a href="#输入键位绑定" class="headerlink" title="输入键位绑定"></a>输入键位绑定</h3><p>简单的技能释放可以直接在蓝图中根据输入调用TryActivateAbility来激活指定技能。不过如果需要在GA中监听输入按钮的释放事件（Wait Input Release），则这种方式无法触发Wait Input Realse的On Release事件，必须在授予技能时指定FGameplayAbilitySpec中的InInputID，在GAS的按钮监听中UAbilitySystemComponent::AbilityLocalInputPressed才能触发按钮的Release事件</p>
+<h4 id="绑定单个技能到特定键位"><a href="#绑定单个技能到特定键位" class="headerlink" title="绑定单个技能到特定键位"></a>绑定单个技能到特定键位</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">bool</span> <span class="title">AMyCCharacter::AddAbilityOnInput</span><span class="params">(TSubclassOf&lt;UGameplayAbility&gt; Ability, FString InputValue, int32 InputID)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">   <span class="keyword">if</span> (AbilitySystemComp &amp;&amp; Ability)</span><br><span class="line">   &#123;</span><br><span class="line">      AbilitySystemComp-&gt;<span class="built_in">GiveAbility</span>(<span class="built_in">FGameplayAbilitySpec</span>(Ability, <span class="number">1</span>, InputID));</span><br><span class="line">      AbilitySystemComp-&gt;<span class="built_in">InitAbilityActorInfo</span>(<span class="keyword">this</span>, <span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">      <span class="function">FInputActionBinding <span class="title">ABPressed</span><span class="params">(FName(InputValue), IE_Pressed)</span></span>;</span><br><span class="line">      ABPressed.ActionDelegate.<span class="built_in">GetDelegateForManualSet</span>().<span class="built_in">BindUObject</span>(AbilitySystemComp, &amp;UBaseAbilitySystemComponent::AbilityLocalInputPressed, InputID);</span><br><span class="line">      InputComponent-&gt;<span class="built_in">AddActionBinding</span>(ABPressed);</span><br><span class="line"></span><br><span class="line">      <span class="function">FInputActionBinding <span class="title">ABReleased</span><span class="params">(FName(InputValue), IE_Released)</span></span>;</span><br><span class="line">      ABReleased.ActionDelegate.<span class="built_in">GetDelegateForManualSet</span>().<span class="built_in">BindUObject</span>(AbilitySystemComp, &amp;UBaseAbilitySystemComponent::AbilityLocalInputReleased, InputID);</span><br><span class="line">      InputComponent-&gt;<span class="built_in">AddActionBinding</span>(ABReleased);</span><br><span class="line">      </span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>InputValue为项目设置Input对应的键值，InputID为自定义的int32，只要设置为不重复即可。绑定了确认和释放按钮后可以在GA中使用Wait Input Release来完成游戏逻辑。</p>
+<h2 id="GamePlayeEffect（GE）"><a href="#GamePlayeEffect（GE）" class="headerlink" title="GamePlayeEffect（GE）"></a>GamePlayeEffect（GE）</h2><h3 id="GE的执行流程"><a href="#GE的执行流程" class="headerlink" title="GE的执行流程"></a>GE的执行流程</h3><h3 id="属性修改（Attribute-Modifier）"><a href="#属性修改（Attribute-Modifier）" class="headerlink" title="属性修改（Attribute Modifier）"></a>属性修改（Attribute Modifier）</h3><p>在GE中可以包含多个Modifier，而每一个Modifier会设定一个数值和一种运算方式，并对应修改一个Attribute。其中包含四种运算方式：1）Add(加&#x2F;减)；2）Multiply乘；3）Divide除；4）Override覆盖。四种Modifier最终的运算结果在FAggregatorModChannel::EvaluateWithBase里定义，默认：</p>
+<p>CurrentValue &#x3D; ((InlineBaseValue + Additive) * Multiplicitive) &#x2F; Division（如果有Override则直接覆盖结果）</p>
+<p>Modifier的取值有四种类型，这部分的设置十分重要，因为会<strong>与游戏逻辑密切挂钩</strong>：</p>
+<ul>
+<li>Scalable Float：可指定一个表中数据，然后乘上一个因数；</li>
+<li>Attribute Based：以Attribute的值作为基值然后乘上因数（采用快照Snapshotting实现）</li>
+<li><strong>Custom Calculation Class</strong>：自定义类，需要引入一个ModifierMagnitudeCalculation类(MMC)，<a target="_blank" rel="noopener" href="https://github.com/tranek/GASDocumentation#4511-modifier-magnitude-calculation">参考范例</a>中根据现有的蓝量和Tag计算最终造成多少蓝量的损失。这种方式的优点时可以被预测而且可用于每一类GE，但最终还是指定修改一种Attribute。</li>
+<li><strong>Set By Caller</strong>：根据释放的技能主体来设定，比如蓄力长短决定的伤害量、资产中设置的数值。需要通过GameplayEffectSpec中的TMap&lt;FGameplayTag, float&gt;索引相关的值，Tag不存在时返回0。这种类型广泛用于可复用的GE。<strong>通过调用AssignTagSetByCallerMagnitude来指定特定Tag对应的float值。</strong></li>
+</ul>
+<h4 id="UGameplayEffectExecutionCalculation-（自定义属性数值计算类）"><a href="#UGameplayEffectExecutionCalculation-（自定义属性数值计算类）" class="headerlink" title="UGameplayEffectExecutionCalculation （自定义属性数值计算类）"></a>UGameplayEffectExecutionCalculation （自定义属性数值计算类）</h4><p>使用方法：</p>
+<ul>
+<li><p>继承UGameplayEffectExecutionCalculation</p>
+</li>
+<li><p>自定义初始化方法（定义从Source和Target捕获的相关属性），</p>
+</li>
+<li><p>overrider Execute_Implementation函数，实现自定义的计算逻辑</p>
+</li>
+</ul>
+<p><strong>初始化方法  方式一：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">UPAMMC_PoisonMana::UPAMMC_PoisonMana()</span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">	//ManaDef defined in header FGameplayEffectAttributeCaptureDefinition ManaDef;</span><br><span class="line">	ManaDef.AttributeToCapture = UPAAttributeSetBase::GetManaAttribute();</span><br><span class="line">	ManaDef.AttributeSource = EGameplayEffectAttributeCaptureSource::Target;</span><br><span class="line">	ManaDef.bSnapshot = false;</span><br><span class="line">  </span><br><span class="line">	RelevantAttributesToCapture.Add(ManaDef);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要定义捕获数据的来源（Source还是Target），哪个属性，快照方式（bSnapshot）</p>
+<p>快照规则如下：</p>
+<p><img src="https://gitee.com/nevermorec/photo-store/raw/master/GAS/3.png" alt="image-20220210141521332"></p>
+<p><strong>方式二：</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">RPGDamageStatics</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="built_in">DECLARE_ATTRIBUTE_CAPTUREDEF</span>(AttackPower);</span><br><span class="line">	<span class="built_in">DECLARE_ATTRIBUTE_CAPTUREDEF</span>(DefensePower);</span><br><span class="line">	<span class="built_in">DECLARE_ATTRIBUTE_CAPTUREDEF</span>(Health);</span><br><span class="line"></span><br><span class="line">	<span class="built_in">RPGDamageStatics</span>()</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">DEFINE_ATTRIBUTE_CAPTUREDEF</span>(UAttributeSetBase, AttackPower, Source, <span class="literal">true</span>);</span><br><span class="line">		<span class="built_in">DEFINE_ATTRIBUTE_CAPTUREDEF</span>(UAttributeSetBase, DefensePower, Target, <span class="literal">false</span>);</span><br><span class="line">		<span class="built_in">DEFINE_ATTRIBUTE_CAPTUREDEF</span>(UAttributeSetBase, Health, Target, <span class="literal">false</span>);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">const</span> RPGDamageStatics&amp; <span class="title">DamageStatics</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="type">static</span> RPGDamageStatics DmgStatics;</span><br><span class="line">	<span class="keyword">return</span> DmgStatics;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">UAttackEffectExecutionCalculation::<span class="built_in">UAttackEffectExecutionCalculation</span>()</span><br><span class="line">&#123;</span><br><span class="line">	RelevantAttributesToCapture.<span class="built_in">Add</span>(<span class="built_in">DamageStatics</span>().AttackPowerDef);</span><br><span class="line">	RelevantAttributesToCapture.<span class="built_in">Add</span>(<span class="built_in">DamageStatics</span>().DefensePowerDef);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">UAttackEffectExecutionCalculation::Execute_Implementation</span><span class="params">(<span class="type">const</span> FGameplayEffectCustomExecutionParameters&amp; ExecutionParams,</span></span></span><br><span class="line"><span class="params"><span class="function">   FGameplayEffectCustomExecutionOutput&amp; OutExecutionOutput)</span> <span class="type">const</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">   UAbilitySystemComponent* SourceASC = ExecutionParams.<span class="built_in">GetSourceAbilitySystemComponent</span>();</span><br><span class="line">   UAbilitySystemComponent* TargetASC = ExecutionParams.<span class="built_in">GetTargetAbilitySystemComponent</span>();</span><br><span class="line">   </span><br><span class="line">   FGameplayEffectSpec EffectSpec = ExecutionParams.<span class="built_in">GetOwningSpec</span>();</span><br><span class="line"></span><br><span class="line">   FAggregatorEvaluateParameters EvaluateParameters;</span><br><span class="line">   EvaluateParameters.SourceTags = EffectSpec.CapturedSourceTags.<span class="built_in">GetAggregatedTags</span>();</span><br><span class="line">   EvaluateParameters.TargetTags = EffectSpec.CapturedTargetTags.<span class="built_in">GetAggregatedTags</span>();</span><br><span class="line"></span><br><span class="line">   <span class="type">float</span> AttackPower = <span class="number">0.0f</span>;</span><br><span class="line">   ExecutionParams.<span class="built_in">AttemptCalculateCapturedAttributeMagnitude</span>(<span class="built_in">DamageStatics</span>().AttackPowerDef, EvaluateParameters, AttackPower);</span><br><span class="line"></span><br><span class="line">   <span class="type">float</span> DefensePower = <span class="number">0.0f</span>;</span><br><span class="line">   ExecutionParams.<span class="built_in">AttemptCalculateCapturedAttributeMagnitude</span>(<span class="built_in">DamageStatics</span>().DefensePowerDef, EvaluateParameters, DefensePower);</span><br><span class="line"></span><br><span class="line">   <span class="type">float</span> Damage = -(AttackPower - DefensePower);</span><br><span class="line">   </span><br><span class="line">   OutExecutionOutput.<span class="built_in">AddOutputModifier</span>(<span class="built_in">FGameplayModifierEvaluatedData</span>(<span class="built_in">DamageStatics</span>().HealthProperty, EGameplayModOp::Additive, Damage));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>OutExecutionOutput.AddOutputModifier</strong>()中定义最终要给Target的Modifier</p>
+<h3 id="冷却GE（Cooldown-GamePlayEffect）"><a href="#冷却GE（Cooldown-GamePlayEffect）" class="headerlink" title="冷却GE（Cooldown GamePlayEffect）"></a>冷却GE（Cooldown GamePlayEffect）</h3><hr>
+<p>Cooldown GE是Duration类型的GE，没有Modifier，但需要赋予自身ASC一个“<em>Cooldown.xxx.xxx</em>”的tag。可以通过以下三种方式之一实现冷却时间和Tag的配置：</p>
+<ul>
+<li>直接配置在单个CooldownGameplayEffect的Modifier中（固定值），这样比较直观但灵活性差。</li>
+<li>用<a target="_blank" rel="noopener" href="https://km.netease.com/article/395325#SetByCaller">SetByCaller</a>，配置tag“<em>Data.Cooldown</em>”对应的数值来设定技能的冷却时间。并且需要重写UGameplayAbility::GetCooldownTags()和UGameplayAbility::ApplyCooldown()</li>
+</ul>
+<p>具体用法：把CoolDown GE的持续时间设置为Set By Caller，overrider ApplyCooldown函数，将CoolDown GE的持续时间设置为自定义的值。SpecHandle.Data.Get()-&gt;SetSetByCallerMagnitude可以完成自定义值的设置</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void UBaseGameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const</span><br><span class="line">&#123;</span><br><span class="line">	UGameplayEffect* CooldownGE = GetCooldownGameplayEffect();</span><br><span class="line">	if (CooldownGE)</span><br><span class="line">	&#123;</span><br><span class="line">		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CooldownGE-&gt;GetClass(), GetAbilityLevel());</span><br><span class="line">		SpecHandle.Data.Get()-&gt;SetSetByCallerMagnitude(CooldownTag, CooldownDuration.GetValueAtLevel(GetAbilityLevel()));</span><br><span class="line">		ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Cooldown GamePlay SetSetByCallerMagnitude</p>
+<ul>
+<li>在Modifier中自定义MMC，在MMC中获取Ability中设定的冷却时间。并且需要重写UGameplayAbility::GetCooldownTags()和UGameplayAbility::ApplyCooldown()</li>
+</ul>
+<h2 id="Attribute"><a href="#Attribute" class="headerlink" title="Attribute"></a>Attribute</h2><p>Attribute是由FGameplayAttributeData结构体定义的浮点值，其可以表示从角色生命值到角色等级再到一瓶药水的剂量的任何事物，如果某项数值是属于某个Actor且游戏相关的，你就应该考虑使用Attribute。Attribute一般应该只能由GE修改，这样ASC才能预测(Predict)其改变。一般Attribute需要由AttributeSet进行保存和管理，而AttributeSet注册于ASC中并受其管理，因此Attribute的访问一般也是通过ASC完成的。</p>
+<p>每个Attribute都有一个BaseValue和CurrentValue，需要格外注意的是<strong>BaseValue</strong>不是<strong>CurrentValue</strong>的最大值！CurrentValue用于那些有持续时间的GE造成的Attribute更改，当GE消失时CurrentValue会变回BaseValue（比如加速减速）；而BaseValue处理的是一次性、永久生效的效果，因此生命值受到伤害时，改变的是BaseValue而不是CurrentValue。<strong>更具体的，BaseValue受Instant和Periodic类GE的影响，而CurrentValue受Duration和Infinite类GE影响。(注：CurrentValue受Duration和Infinite影响的提前是没有定义为Period，如果定义了Period，则Duration的GE为视为多个Instant GE的组合，其对BaseValue的修改和GameplayCue的执行方式如同Instant类。)</strong></p>
+<h3 id="Attribute的监听和修改相关函数"><a href="#Attribute的监听和修改相关函数" class="headerlink" title="Attribute的监听和修改相关函数"></a>Attribute的监听和修改相关函数</h3><p>Attribute的修改最好是都通过GE来完成，这样一来可以有效地触发回调函数，而且在实现客户端预测时，也有办法把错误判断修改的数值进行回退。以下是几种常用的监听Attribute变化的方式：</p>
+<ul>
+<li>数值变化生效前，会调用**UAttributeSet::PreAttributeChange(const FGameplayAttribute&amp; Attribute, float&amp; NewValue)**，需要对数值限值的话在此处完成，<a target="_blank" rel="noopener" href="http://github.com/tranek/GASDocumentation#445-preattributechange">参考范例</a>。建议该函数内只做限值，不处理游戏逻辑。</li>
+<li>由GE引起的数值变化生效后，但在同步至客户端之前，会调用**UAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData &amp; Data)**，可<a target="_blank" rel="noopener" href="https://github.com/tranek/GASDocumentation/blob/549f1955a21504ffdf318464897d686db5bb8e68/Source/GASDocumentation/Private/Characters/Abilities/AttributeSets/GDAttributeSetBase.cpp#L45">参考范例</a>。在Data中可以获取GE相关的各种信息，因此可以处理各种GE作用后的逻辑，比如伤害的生效。由于数值还没同步到客户端，因此进一步限值需要在此完成，比如限制Health不能小于0。</li>
+<li>在ASC中绑定委托和回调函数，实现Attribute的监听，如下所示。此处一般处理与数值无关的一些逻辑，比如通过委托进一步触发受击动作、UI变化等逻辑。(FOnAttributeChangeData为struct类型，无法直接暴露到蓝图中（不能直接使用BlueprintImplementableEvent），可考虑自定义委托然后在PostGameplayEffectExecute中直接广播)</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">AbilitySystemComponent-&gt;<span class="built_in">GetGameplayAttributeValueChangeDelegate</span>(AttributeSetBase-&gt;<span class="built_in">GetHealthAttribute</span>()).<span class="built_in">AddUObject</span>(<span class="keyword">this</span>, &amp;AGDPlayerState::HealthChanged);</span><br><span class="line"><span class="comment">// 定义血量变化时的回调函数</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">AGDPlayerState::HealthChanged</span><span class="params">(<span class="type">const</span> FOnAttributeChangeData&amp; Data)</span> </span>&#123;&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+<h2 id="Ability-Task"><a href="#Ability-Task" class="headerlink" title="Ability Task"></a>Ability Task</h2><h3 id="自定义AbilityTask"><a href="#自定义AbilityTask" class="headerlink" title="自定义AbilityTask"></a>自定义AbilityTask</h3><p>通常你需要创建自己的自定义<code>AbilityTask</code>(C++中). 样例项目带有两个自定义<code>AbilityTask</code>:</p>
+<ol>
+<li><code>PlayMontageAndWaitForEvent</code>是默认<code>PlayMontageAndWait</code>和<code>WaitGameplayEvent</code>AbilityTask的结合体, 其允许动画蒙太奇自<code>AnimNotify</code>发送GameplayEvent回到启动它的<code>GameplayAbility</code>, 可以使用该Task在动画蒙太奇的某个特定时刻来触发操作.</li>
+<li><code>WaitReceiveDamage</code>可以监听<code>OwnerActor</code>接收伤害. 当英雄接收到一个伤害实例时, 被动护甲层<code>GameplayAbility</code>就会移除一层护甲.</li>
+</ol>
+<p><code>AbilityTask</code>的组成:</p>
+<ul>
+<li>创建新的<code>AbilityTask</code>实例的静态函数</li>
+<li>当<code>AbilityTask</code>完成目的时分发的委托(Delegate)</li>
+<li>进行主要工作的<code>Activate()</code>函数, 绑定到外部的委托等等</li>
+<li>进行清理工作的<code>OnDestroy()</code>函数, 包括其绑定到外部的委托</li>
+<li>所有绑定到外部委托的回调函数</li>
+<li>成员变量和所有内部辅助函数</li>
+</ul>
+<p><strong>Note:</strong> <strong><code>AbilityTask</code>只能声明一种类型的输出委托, 所有的输出委托都必须是该种类型, 不管它们是否使用参数. 对于未使用的委托参数会传递默认值.</strong></p>
+<h4 id="在GA中实现Tick节点"><a href="#在GA中实现Tick节点" class="headerlink" title="在GA中实现Tick节点"></a>在GA中实现Tick节点</h4><ul>
+<li>继承UAbilityTask，设置bTickingTask&#x3D;true</li>
+<li>新建一种委托，可以在蓝图中实现委托函数</li>
+<li>利用static函数new当前的AbilityTask对象</li>
+<li>override TickTask，广播委托</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam</span>(FOnTickDelegate, <span class="type">float</span>, DeltaTime);</span><br><span class="line"></span><br><span class="line"><span class="built_in">UCLASS</span>()</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">UETEST_API</span> UAbilityTask_AbilityTick : <span class="keyword">public</span> UAbilityTask</span><br><span class="line">&#123;</span><br><span class="line">	<span class="built_in">GENERATED_BODY</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">UAbilityTask_AbilityTick</span>();</span><br><span class="line"></span><br><span class="line">	<span class="built_in">UFUNCTION</span>(BlueprintCallable, Category = <span class="string">&quot;Ability|Tasks&quot;</span>, meta = (HidePin = <span class="string">&quot;OwningAbility&quot;</span>, DefaultToSelf = <span class="string">&quot;OwningAbility&quot;</span>, BlueprintInternalUseOnly = <span class="string">&quot;TRUE&quot;</span>))</span><br><span class="line">	<span class="function"><span class="type">static</span> UAbilityTask_AbilityTick* <span class="title">AbilityTick</span><span class="params">(UGameplayAbility* OwningAbility)</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">UPROPERTY</span>(BlueprintAssignable)</span><br><span class="line">	FOnTickDelegate OnTickDelegate;</span><br><span class="line">	</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">	<span class="comment">/** Tick function for this task, if bTickingTask == true */</span></span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">TickTask</span><span class="params">(<span class="type">float</span> DeltaTime)</span> <span class="keyword">override</span></span>;</span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">OnDestroy</span><span class="params">(<span class="type">bool</span> AbilityIsEnding)</span> <span class="keyword">override</span></span>;</span><br><span class="line">	</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">UAbilityTask_AbilityTick::UAbilityTask_AbilityTick()</span><br><span class="line">&#123;</span><br><span class="line">	bTickingTask = true;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void UAbilityTask_AbilityTick::TickTask(float DeltaTime)</span><br><span class="line">&#123;</span><br><span class="line">	Super::TickTask(DeltaTime);</span><br><span class="line">	OnTickDelegate.Broadcast(DeltaTime);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">UAbilityTask_AbilityTick* UAbilityTask_AbilityTick::AbilityTick(UGameplayAbility* OwningAbility)</span><br><span class="line">&#123;</span><br><span class="line">	UAbilityTask_AbilityTick* MyObj = NewAbilityTask&lt;UAbilityTask_AbilityTick&gt;(OwningAbility);</span><br><span class="line">	return MyObj;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<p>Note:</p>
+<ul>
+<li>在多人游戏中使用mesh的PlayMontage不能自动同步蒙太奇，需要使用GAS自带的PlayMontageAndWait(AbilityTask)才能同步蒙太奇</li>
+</ul>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2022/03/28/Slate%E5%92%8C%E8%A1%8C%E4%B8%BA%E6%A0%91%E6%8E%A5%E5%85%A5/" title="Unity Slate和行为树接入" class="prev">PREV</a><a href="/2022/02/20/UE_Advanced%20ARPG%20Melee%20Combat%20System%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" title="UE_Advanced ARPG Melee Combat System学习笔记" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2023 <a target="_blank">John Doe</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

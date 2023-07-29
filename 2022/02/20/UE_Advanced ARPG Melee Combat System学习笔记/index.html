@@ -1,0 +1,268 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> UE_Advanced ARPG Melee Combat System学习笔记 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="UE_Advanced ARPG Melee Combat System学习笔记 - John Doe"><meta name="keywords"><meta name="author" content="John Doe"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://nevermorec.gitee.io/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">UE_Advanced ARPG Melee Combat System学习笔记</h1><div class="post-info">2022-02-20<p class="visit"><i data-identity="2022/02/20/UE_Advanced ARPG Melee Combat System学习笔记/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><h3 id="CharacterStateManagerComponent"><a href="#CharacterStateManagerComponent" class="headerlink" title="CharacterStateManagerComponent"></a>CharacterStateManagerComponent</h3><p><strong>Function</strong></p>
+<ul>
+<li>SetAction(设置动作，不包括动画)</li>
+<li>SetState</li>
+</ul>
+<p><strong>Event</strong></p>
+<ul>
+<li>Action Begin (在设置动作开始时触发，主要包括镜头等处理)</li>
+<li>Action End</li>
+</ul>
+<h3 id="MontageManagerComponent"><a href="#MontageManagerComponent" class="headerlink" title="MontageManagerComponent"></a>MontageManagerComponent</h3><p><strong>Function</strong></p>
+<ul>
+<li>GetGeneralActionMontage</li>
+<li>SetState</li>
+</ul>
+<h3 id="CollisionComponent"><a href="#CollisionComponent" class="headerlink" title="CollisionComponent"></a>CollisionComponent</h3><p><strong>Event</strong></p>
+<ul>
+<li>OnCollisionEnable （打开碰撞检测，触发CollisionTrace事件）</li>
+<li>CollisionTrace （循环检测碰撞直到EnableCollisionTrace被设置成false，循环期间根据碰撞信息触发OnHit事件，OnHit事件的具体逻辑由角色蓝图进行控制）</li>
+</ul>
+<h4 id="InputBufferNS-AnimNotifyState"><a href="#InputBufferNS-AnimNotifyState" class="headerlink" title="InputBufferNS:  AnimNotifyState"></a>InputBufferNS:  AnimNotifyState</h4><p>该类配合动画Montage中的Nofities来控制特定动作时间内才允许接受玩家输入</p>
+<p><strong>Function</strong></p>
+<ul>
+<li>Received_NotifyBegin</li>
+<li>Received_NotifyEnd</li>
+</ul>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/2.png?raw=true" alt="image-20211227155216998"></p>
+<p>攻击动画蒙太奇的配置</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/3.png?raw=true" alt="image-20211227165119510"></p>
+<p>InputBufferNS控制玩家输入缓存</p>
+<h4 id="AttackTraceNS：AnimNotifyState"><a href="#AttackTraceNS：AnimNotifyState" class="headerlink" title="AttackTraceNS：AnimNotifyState"></a>AttackTraceNS：AnimNotifyState</h4><p>该类配合动画Montage中的Nofities来控制攻击过程中的碰撞体</p>
+<p><strong>Function</strong></p>
+<ul>
+<li>Received_NotifyBegin</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">（1）根据类型执行相关逻辑</span><br><span class="line">（2）如果是武器，获取当前武器和武器碰撞体的相关信息，调用武器CollisionComponent中的Enable Collision事件（开启碰撞检测，清除之前的碰撞信息）</span><br><span class="line">（3）如果是四肢，打开四肢的碰撞体</span><br><span class="line">（4）如果是盾牌，打开盾牌的碰撞体</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Received_NotifyEnd(关闭碰撞体)</li>
+</ul>
+<p><strong>攻击动画蒙太奇的整体流程：</strong></p>
+<p>初始化过程中就会将主角Actor中的碰撞体引用绑定到Collision Component上</p>
+<ul>
+<li>（1）动画蒙太奇配置AttackTraceNS(AnimNotifyState)，Received_NotifyBegin调用角色实现的CombatBPI接口存储此次攻击信息（Update Attack Info），同时打开武器碰撞体检测，打开期间根据循环检测是否碰撞</li>
+<li>（2）检测通过MultiSphereTraceForObject函数，将检测结果放入HItActors数组中</li>
+<li>（3）处理碰撞结果，调用OnHit事件，主要是根据碰撞信息和人物攻击力等数值信息播放受击动画、特效，造成伤害等</li>
+<li>（4）AttackTraceNS的Received_NotifyEnd关闭武器碰撞体</li>
+</ul>
+<p>AI的攻击蒙太奇主要靠Attack_Trace_AI实现</p>
+<p><strong>碰撞检测造成伤害流程</strong></p>
+<p>攻击蒙太奇中开启碰撞检测，产生碰撞结果后会调用当前持有Collision Componet的Actor的On Hit事件，</p>
+<p>武器的On Hit事件</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/4.png?raw=true" alt="image-20211230150356776"></p>
+<p>如果被击中的Actor是Pawn，则执行<strong>Try to Apply Damge</strong>（在服务端运行，Try to Apply Damge中根据武器的自身设置和持有武器的Actor调用UE中自带的Actor伤害系统（Apply Damage函数）），然后调用持有武器Actor 的On Hit事件。</p>
+<p>如果Actor不是Pawn则调用武器持有者的On Hit事件</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/5.png?raw=true" alt="image-20211230152953540"></p>
+<p>主角Actor的On Hit事件会调用<strong>On Melee Hit</strong>事件：</p>
+<ul>
+<li><p>获取动画蒙太奇中配置的Attack Info</p>
+</li>
+<li><p>获取被攻击者的Hit React Component</p>
+</li>
+<li><p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/6.png?raw=true"></p>
+<p><strong>Make Combat Hit Data</strong>中计算两者距离、攻击方向、调用受击者的Get Impact Decision得到当前是否格挡，<strong>Store CombitHit Data</strong>将受击信息（CombatHitData_Struct）存储到受击者的Hit Reaction Component中，后面的受击者的伤害计算、受击反馈等需要使用该数据</p>
+</li>
+<li><p>在被攻击者的Hit React Component的设置碰撞信息，包括碰撞骨骼，碰撞位置等</p>
+</li>
+<li><p>伤害计算后攻击者通过Apply Damage传递攻击的相关数据，被攻击者接收Event AnyDamage事件处理伤害<img src="https://github.com/nevermorec/Photo-store/blob/master/All/7.png?raw=true" alt="image-20211230171903467"></p>
+</li>
+<li><p>调用被攻击者Hit React Component播放受击动画、特效等</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/8.png?raw=true" alt="image-20220113190346003"></p>
+</li>
+</ul>
+<p><strong>普攻连击流程：</strong></p>
+<p>MontageComponent中的DataTable中引用了CombatMontagesDataTable，该表格存储了一套动作连招的所有蒙太奇。</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/9.png?raw=true" alt="image-20211230115943728"></p>
+<p>执行普通攻击的入口：</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/10.png?raw=true" alt="image-20211230114554643"></p>
+<p>Attack Type类型包括Light attack、strong attack等枚举类型</p>
+<ul>
+<li>设置CombatComponet中的attack type</li>
+<li>设置CharacterStateManager中的Action(这里是Attack，CharacterStateManager会处理新旧Action切换的一些行为)</li>
+<li>设置CharacterStateManager中的State(这里是Attacking，CharacterStateManager会处理新旧State切换的一些行为)</li>
+<li>清除ResetAttackHandle计时器（计时器的作用是重置当前的Attack Count，这里的清除作用是允许角色继续连击，增加Attack Count）</li>
+<li>根据Attack Type和Attack Index获取要执行的蒙太奇</li>
+<li>Inform AI  of An Attack通知相关AI角色要执行的动作，供AI后续执行自己的处理</li>
+<li>播放动画蒙太奇</li>
+<li>Attack Count++，如果Attack Count没有被重置下次执行Perform Attack则会索引到下一个配置好的蒙太奇动画</li>
+<li>设置重置Attack Count的定时器（demo这里设置为蒙太奇时间*0.8）</li>
+<li>检测蒙太奇是否播放成功，成功则执行StatsComponent中的Modify Current Stat Value扣除法力，耐力等逻辑</li>
+</ul>
+<p>ARPG的连击方法：</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/11.png?raw=true" alt="image-20220113191554301"></p>
+<p>JumpSectionNS 期间内可以连击， JumpSections 存储了可以跳转的Section</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/12.png?raw=true" alt="image-20220113201350324"></p>
+<p>期间在此触发相同普攻，会依据 JumpSections设置的 JumpSections来跳转到指定section。</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/13.png?raw=true" alt="image-20220113201941101"></p>
+<p><strong>基础设定</strong></p>
+<p>Character State：</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/14.png?raw=true" alt="image-20211230145253302"></p>
+<p>Character Action：</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/15.png?raw=true" alt="image-20211230145345422"></p>
+<p><strong>Get General Action Montage</strong>：</p>
+<p>得到当前要播放的蒙太奇动画</p>
+<p>每次更新武器会替换当前的Switch weapon的蒙太奇动画</p>
+<p>蒙太奇动画管理：</p>
+<p>不同武器之间对应不同的蒙太奇动画，需要在切换武器时切换当前角色的蒙太奇动画</p>
+<p><strong>CombatMontagesDataTable</strong>数据表中存储了不同武器下的蒙太奇动画（装备武器、攻击、翻滚动作、受击反馈动画等等）</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/16.png?raw=true"></p>
+<p>当触发EquipmentManagerComponent中的OnCombatTypeChange事件（武器该表）时，调用MonatgeManagerComponent中的UpdateMontage函数处理蒙太奇动画的更新。</p>
+<p>多角色蒙太奇配合：</p>
+<p>以暗杀为例，暗杀需要两个角色配合表演完整的暗杀动画。</p>
+<p>暗杀者通过向前的碰撞检测敌人，如果有敌人检查是否满足暗杀条件，条件成功执行暗杀，并且将被暗杀者的背板值General AI State设置为Assasinated，通过被暗杀者的行为树控制表演被杀动画。</p>
+<p><strong>AI</strong></p>
+<p>AI的行为树分为一下几个部分：</p>
+<ul>
+<li>进入战斗（播放装备武器动画、修改General AI State）</li>
+<li>退出战斗</li>
+<li>巡逻</li>
+<li>战斗</li>
+</ul>
+<p>服务节点：BTS_AIDecisionMaker，</p>
+<p>战斗子行为树的实现：</p>
+<p>服务节点：BTS_TrackPlayerState，该服务设置当前角色的AI Action，包括Attack、Block、Dodge、Hit等，叶子节点负责执行对应的AI Action</p>
+<p>攻击Task节点：根据BTS_AIDecisionMaker设置的攻击方式进行攻击</p>
+<h3 id="数据存储"><a href="#数据存储" class="headerlink" title="数据存储"></a>数据存储</h3><p>继承SaveGame，在类中自定义需要存储的数据</p>
+<p>在GameInstance中新建变量CurSavedGame，变量类型是上面的类</p>
+<p><strong>载入数据</strong>：</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/17.png?raw=true" alt="image-20220124095618894"></p>
+<p><strong>保存数据到文件：</strong></p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/18.png?raw=true" alt="image-20220124095715901"></p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/19.png?raw=true" alt="image-20220124095749898"></p>
+<p>Save Game to Slot会创建一个(Slot Name).sav的文件，本地保存路径为Saved&#x2F;SavedGame&#x2F;(Slot Name).sav</p>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2022/03/20/UE-GAS(%E6%8A%80%E8%83%BD%E7%B3%BB%E7%BB%9F)/" title="UE-GAS(技能系统)" class="prev">PREV</a><a href="/2022/01/20/UE-AI/" title="UE-AI" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2023 <a target="_blank">John Doe</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

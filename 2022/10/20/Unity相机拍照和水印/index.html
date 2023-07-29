@@ -1,0 +1,176 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> Unity相机拍照和水印 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Unity相机拍照和水印 - John Doe"><meta name="keywords"><meta name="author" content="John Doe"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://nevermorec.gitee.io/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">Unity相机拍照和水印</h1><div class="post-info">2022-10-20<p class="visit"><i data-identity="2022/10/20/Unity相机拍照和水印/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><h3 id="Unity相机拍摄"><a href="#Unity相机拍摄" class="headerlink" title="Unity相机拍摄"></a>Unity相机拍摄</h3><p>实现思路：利用render texture将相机的渲染结果放在对应的texture上，texture2D.ReadPixels()和texture2D.Apply()可以将读取到camera到渲染结果</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">-- 相机对拍摄区域拍照</span><br><span class="line">function UIPhoto:TakePhoto()</span><br><span class="line">    rt = URenderTexture.GetTemporary(</span><br><span class="line">        UScreen.width, </span><br><span class="line">        UScreen.height, </span><br><span class="line">        0, </span><br><span class="line">        URenderTextureFormat.ARGB32,</span><br><span class="line">        URenderTextureReadWrite.sRGB)</span><br><span class="line">    local previous = URenderTexture.active</span><br><span class="line">    </span><br><span class="line">    mainCamera = CameraSystem.GetMainCamera()</span><br><span class="line"></span><br><span class="line">    local cameraData = CS.UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(mainCamera);</span><br><span class="line">    cameraData.renderType = CS.UnityEngine.Rendering.Universal.CameraRenderType.Base;</span><br><span class="line"></span><br><span class="line">    mainCamera.targetTexture = rt</span><br><span class="line">    mainCamera:Render()</span><br><span class="line">    URenderTexture.active = rt</span><br><span class="line">    </span><br><span class="line">    screenShot = UTexture2D(UScreen.width, UScreen.height, CS.UnityEngine.TextureFormat.RGBA32, false)</span><br><span class="line"></span><br><span class="line">    -- 读取屏幕像素信息并存储为纹理数据</span><br><span class="line">    screenShot:ReadPixels(CS.UnityEngine.Rect(0, 0, UScreen.width, UScreen.height), 0, 0)</span><br><span class="line">    screenShot:Apply()</span><br><span class="line">    cameraData.renderType = CS.UnityEngine.Rendering.Universal.CameraRenderType.Overlay;</span><br><span class="line">    mainCamera.targetTexture = nil</span><br><span class="line">    </span><br><span class="line">    URenderTexture.active = previous</span><br><span class="line">    URenderTexture:ReleaseTemporary(rt)</span><br><span class="line">	</span><br><span class="line">	return screenShot</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p>Notes: 如果在没有渲染结果时调用ReadPixels()会报错：ReadPixels was called to read pixels from system frame buffer, while not inside drawing frame. UnityEngine.Texture2D:ReadPixels</p>
+<p>有以下三种解决方式</p>
+<ul>
+<li>在调用ReadPixels()前手动调用相机渲染，即调用Camera.Render()</li>
+<li>在C#的private void OnPostRender()中调用ReadPixels()</li>
+<li>在调用ReadPixels()前使用 yield return new WaitForEndOfFrame()</li>
+</ul>
+<h3 id="图片水印"><a href="#图片水印" class="headerlink" title="图片水印"></a>图片水印</h3><p>实现思路一：</p>
+<ul>
+<li>（1）得到水印texture </li>
+<li>（2）计算水印的相对位置 </li>
+<li>（3）利用texture2D.GetPixel(i, j) 和texture2D.SetPixels()把水印图片附加到原图上</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">-- 图片加游戏 Logo</span><br><span class="line">-- offset表示logo图片在原图上的相对位置，范围是0-1</span><br><span class="line">local function AddGameLogo(orignalTexture, offsetX, offsetY)</span><br><span class="line">    local ResourceManager = require(&quot;Game/ResourceManager&quot;)</span><br><span class="line">	local width = orignalTexture.width</span><br><span class="line">	local height = orignalTexture.height</span><br><span class="line"></span><br><span class="line">    local CoroutineManager = require(&#x27;Game/CoroutineManager&#x27;)</span><br><span class="line">    CoroutineManager.Create(</span><br><span class="line">        function()</span><br><span class="line">            local newTexture = UTexture2D(width, height, CS.UnityEngine.TextureFormat.RGB24, false)</span><br><span class="line">            local logoTexture = ResourceManager.Load(&#x27;logo&#x27;, typeof(CS.UnityEngine.Texture))</span><br><span class="line">            local offsetWidth = math.floor((width - logoTexture.width) * offsetX)</span><br><span class="line">            local offsetHeight = math.floor((height - logoTexture.height) * offsetY)</span><br><span class="line"></span><br><span class="line">            local colors = orignalTexture:GetPixels()</span><br><span class="line">            for i = 1, logoTexture.width do</span><br><span class="line">                for j = 1, logoTexture.height do</span><br><span class="line">                    -- body</span><br><span class="line">                    local newColor = logoTexture:GetPixel(i, j)</span><br><span class="line">                    if newColor.a ~= 0 then</span><br><span class="line">                        colors[width * (j + offsetHeight -1) + offsetWidth + i - 1] = newColor</span><br><span class="line">                    end</span><br><span class="line">                end</span><br><span class="line">            end</span><br><span class="line">            newTexture:SetPixels(0, 0, width, height, colors)</span><br><span class="line">            newTexture:Apply(false)</span><br><span class="line">            </span><br><span class="line">        end</span><br><span class="line">    )</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+
+<p>实现思路二：</p>
+<p>上述实现思路中SetPixels在CPU上运行，如果对大量的像素点使用SetPixels发放，会造成卡顿，因此需要一种在GPU处理图片运行的快速方法。</p>
+<ul>
+<li>写一个依据透明度混合两个Texture的shader</li>
+<li>使用Blit接口调用上述Shdaer混合Texture</li>
+</ul>
+<h3 id="文字水印"><a href="#文字水印" class="headerlink" title="文字水印"></a>文字水印</h3><p>如果是静态的文字可直接制作文字的图片，然后用上面的加图片水印的方式增加文字水印。</p>
+<p>如果是动态的文字，主要的实现思路如下：</p>
+<ul>
+<li><p>在UI中创建需要显示的特定Text，同时指定一个特定的Layer供相机渲染</p>
+</li>
+<li><p>创建render texture，指定相机的渲染layer，注意相机的render type必须为base，即</p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/All/20.png?raw=true" alt="image-20220602160849086"></p>
+</li>
+</ul>
+<p>如果在相机在overlay模式无法输出渲染结果到render texture</p>
+<ul>
+<li>得到文字水印的render texture后通过图片水印的方式增加文字水印</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">mainCamera = GetGame().windowManager.camera</span><br><span class="line">local layerMask = 1 &lt;&lt; ULayerMask.NameToLayer(&quot;Watermark&quot;)</span><br><span class="line">local cacheLayerMesh = mainCamera.cullingMask</span><br><span class="line">local cameraData = CS.UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(mainCamera);</span><br><span class="line">cameraData.renderType = CS.UnityEngine.Rendering.Universal.CameraRenderType.Base;</span><br><span class="line">mainCamera.cullingMask = layerMask</span><br><span class="line"></span><br><span class="line">mainCamera.targetTexture = rt</span><br><span class="line">mainCamera:Render()</span><br><span class="line">URenderTexture.active = rt</span><br><span class="line"></span><br><span class="line">screenShot = UTexture2D(UScreen.width, UScreen.height, CS.UnityEngine.TextureFormat.RGBA32, false)</span><br><span class="line"></span><br><span class="line">-- 读取屏幕像素信息并存储为纹理数据</span><br><span class="line">screenShot:ReadPixels(CS.UnityEngine.Rect(0, 0, UScreen.width, UScreen.height), 0, 0)</span><br><span class="line">screenShot:Apply()</span><br><span class="line">mainCamera.cullingMask = cacheLayerMesh</span><br><span class="line">mainCamera.targetTexture = nil</span><br><span class="line"></span><br><span class="line">URenderTexture.active = previous</span><br><span class="line">URenderTexture:ReleaseTemporary(rt)</span><br></pre></td></tr></table></figure>
+
+
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2023/01/15/%E9%9D%99%E6%80%81Enity%20AOI/" title="静态Enity AOI管理" class="prev">PREV</a><a href="/2022/08/20/Unity%20DOTS%E6%8A%80%E6%9C%AF/" title="Unity DOTS技术" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2023 <a target="_blank">John Doe</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>
