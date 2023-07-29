@@ -17,7 +17,7 @@
 <li><p>GA：激活GA后运行Event Activate Ability事件，CommitAbility用于提交扣蓝等功能。</p>
 </li>
 </ul>
-<p><img src="https://gitee.com/nevermorec/photo-store/raw/master/GAS/1.png" alt="image-20220115174818619"></p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/GAS/1.png?raw=true" alt="image-20220115174818619"></p>
 <ul>
 <li><p>如果是攻击技能开启碰撞检测。将HitResult或者HItActor放入TargetDataHandle中</p>
 <p>c++放入过程：</p>
@@ -26,7 +26,7 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">FGameplayAbilityTargetDataHandle TargetDataHandle;</span><br><span class="line"></span><br><span class="line">FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(HitResult);</span><br><span class="line">TargetDataHandle.Add(TargetData);</span><br></pre></td></tr></table></figure>
 
 <p>蓝图只能单个Actor或者HitResult放入TargetDataHandle中</p>
-<p><img src="https://gitee.com/nevermorec/photo-store/raw/master/GAS/2.png"></p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/GAS/2.png?raw=true"></p>
 <ul>
 <li><p>对被释放对象施加GE</p>
 <p>蓝图调用ApplyGamePlayEffectToTarget</p>
@@ -60,7 +60,7 @@
 
 <p>需要定义捕获数据的来源（Source还是Target），哪个属性，快照方式（bSnapshot）</p>
 <p>快照规则如下：</p>
-<p><img src="https://gitee.com/nevermorec/photo-store/raw/master/GAS/3.png" alt="image-20220210141521332"></p>
+<p><img src="https://github.com/nevermorec/Photo-store/blob/master/GAS/3.png?raw=true" alt="image-20220210141521332"></p>
 <p><strong>方式二：</strong></p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">RPGDamageStatics</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="built_in">DECLARE_ATTRIBUTE_CAPTUREDEF</span>(AttackPower);</span><br><span class="line">	<span class="built_in">DECLARE_ATTRIBUTE_CAPTUREDEF</span>(DefensePower);</span><br><span class="line">	<span class="built_in">DECLARE_ATTRIBUTE_CAPTUREDEF</span>(Health);</span><br><span class="line"></span><br><span class="line">	<span class="built_in">RPGDamageStatics</span>()</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">DEFINE_ATTRIBUTE_CAPTUREDEF</span>(UAttributeSetBase, AttackPower, Source, <span class="literal">true</span>);</span><br><span class="line">		<span class="built_in">DEFINE_ATTRIBUTE_CAPTUREDEF</span>(UAttributeSetBase, DefensePower, Target, <span class="literal">false</span>);</span><br><span class="line">		<span class="built_in">DEFINE_ATTRIBUTE_CAPTUREDEF</span>(UAttributeSetBase, Health, Target, <span class="literal">false</span>);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">const</span> RPGDamageStatics&amp; <span class="title">DamageStatics</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="type">static</span> RPGDamageStatics DmgStatics;</span><br><span class="line">	<span class="keyword">return</span> DmgStatics;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">UAttackEffectExecutionCalculation::<span class="built_in">UAttackEffectExecutionCalculation</span>()</span><br><span class="line">&#123;</span><br><span class="line">	RelevantAttributesToCapture.<span class="built_in">Add</span>(<span class="built_in">DamageStatics</span>().AttackPowerDef);</span><br><span class="line">	RelevantAttributesToCapture.<span class="built_in">Add</span>(<span class="built_in">DamageStatics</span>().DefensePowerDef);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
