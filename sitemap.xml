@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://nevermorec.gitee.io/2024/05/13/Unity%E6%90%AD%E5%BB%BAMVVM%E6%A1%86%E6%9E%B6/</loc>
+    
+    <lastmod>2024-05-13</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>http://nevermorec.gitee.io/2022/01/20/UE-AI/</loc>
     
     <lastmod>2023-07-29</lastmod>
@@ -121,7 +130,7 @@
 
   <url>
     <loc>http://nevermorec.gitee.io/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -129,49 +138,49 @@
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/AI/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/Unity/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/UE-GAMEPLAY/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/AI-UE/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/Game-Play/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/Game101/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://nevermorec.gitee.io/tags/AOI/</loc>
-    <lastmod>2023-07-29</lastmod>
+    <lastmod>2024-05-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
